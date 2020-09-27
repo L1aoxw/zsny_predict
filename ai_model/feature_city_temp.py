@@ -19,6 +19,17 @@ from replite import Replite
 import pickle
 from xpinyin import Pinyin
 
+def pinyin_sort(lists):             #输入一个名字的列表
+    pin=Pinyin()
+    result=[]
+    for item in lists:
+        result.append((pin.get_pinyin(item),item))
+    result.sort()
+    for i in range(len(result)):
+        result[i]=result[i][1]
+    print(result)                 #输出结果
+    return result
+
 class Merge_pred():
     def __init__(self):
         self.replite = Replite()
@@ -119,6 +130,7 @@ class Merge_pred():
 
 class Merge_train():
     def __init__(self):
+        self.replite = Replite()
         self.pred_days = 15
         self.citys_w = np.array([0.23,0.07,0.07,0.05,0.1,0.08,0.07,0.02,0.05,0.06,0.05,0.06,0.07,0.03])
     def get_hunan_info(self):
@@ -154,7 +166,9 @@ class Merge_train():
         open('./天气历史_湖南省.csv', 'w', encoding='utf-8').write('\n'.join(res))
         print('---')
 
-    def get_feature(self,csv_file='./天气历史_湖南省.csv',label_file='./湖南省统调最大负荷.csv'):
+    def get_feature(self, data_in_train):
+        csv_file = './天气历史_湖南省.csv'
+        label_file = './湖南省统调最大负荷.csv'
         data_csv = pd.read_csv(csv_file, sep=',')
         data_label = pd.read_csv(label_file,sep=',')
         # 删除所有存在nan值的行再合并
@@ -245,6 +259,8 @@ class Merge_train():
         train_data = np.array(feature_train)
         train_y = np.array(label_train)
         assert len(train_data)==len(train_y)
+        np.savetxt('./train_data.csv', train_data, delimiter=',')
+        np.savetxt('./train_y.csv', train_y, delimiter=',')
         return train_data,train_y
 
 if __name__ == '__main__':

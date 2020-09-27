@@ -12,7 +12,6 @@ from bs4 import BeautifulSoup
 import re
 import pickle
 from xpinyin import Pinyin
-from multiprocessing.dummy import Pool as ThreadPool
 
 def pinyin_sort(lists):             #输入一个名字的列表
     pin=Pinyin()
@@ -233,7 +232,7 @@ class Merge_pred():
             res.append(','.join([hunan_city,hunan_date,hunan_weathe,hunan_min,hunan_max]))
         open(predict_file, 'w', encoding='utf-8').write('\n'.join(res))
         return predict_file
-    def get_feature(self,csv_file='./天气预报15天_湖南省.csv',train_data = './train_data.csv'):
+    def get_feature(self,csv_file='./天气预报15天_湖南省.csv',train_data = './train_data/train_data.csv'):
         data_csv = pd.read_csv(csv_file, header=None,sep=',')
         train_data = pd.read_csv(train_data, sep=',')
         years = [2015, 2016, 2017, 2018, 2019, 2020]
@@ -314,7 +313,7 @@ class Merge_train():
         citys = ['changsha', 'zhuzhou', 'xiangtan', 'shaoyang', 'hengyang', 'yueyang', 'changde', 'zhangjiajie',
                       'yiyang',
                       'chenzhou', 'yongzhou', 'huaihua', 'loudi', 'jishou']
-        # if not os.path.exists(self.train_data_dir+'/201501-202008各市州气候.csv'):
+        # if not os.path.exists(self.train_data_dir+'/各市州气候.csv'):
         txt_file = self.train_data_dir + '/天气历史_%s.csv' % (citys[0])
         data = pd.read_csv(txt_file, header=None, sep=',')
         for i in range(1, len(citys)):
@@ -323,8 +322,8 @@ class Merge_train():
             data = pd.merge(data, temp, how='left', on=[data.columns[1], temp.columns[1]])
         # labels = pd.read_csv('label_2019.csv',header=None)
         # data=pd.merge(data, labels, how='inner', on=[data.columns[0], labels.columns[0]])
-        data.to_csv(self.train_data_dir +'/201501-202008各市州气候.csv', index=False, header=False)
-        data = pd.read_csv(self.train_data_dir +'/201501-202008各市州气候.csv', header=None, sep=',')
+        data.to_csv(self.train_data_dir +'/各市州气候.csv', index=False, header=False)
+        data = pd.read_csv(self.train_data_dir +'/各市州气候.csv', header=None, sep=',')
         res = []
         for i in range(len(data)):
             #'changsha', '2015/1/1', '多云', 4, 12, 'zhuzhou', '多云', 4, 12, 'xiangtan', '多云', 5, 12, 'shaoyang', '阴', 11.0, 16.0,...
@@ -342,7 +341,7 @@ class Merge_train():
             res.append(','.join([hunan_city, hunan_date, hunan_weathe, hunan_min, hunan_max]))
         open(self.train_data_dir +'/天气历史_湖南省.csv', 'w', encoding='utf-8').write('\n'.join(res))
         print('---')
-    def get_feature(self,csv_file='./天气历史_湖南省.csv',label_file='./201611-202008湖南省统调最大负荷.csv', train_data = './train_data.csv'):
+    def get_feature(self,csv_file='./天气历史_湖南省.csv',label_file='./湖南省统调最大负荷.csv', train_data = './train_data.csv'):
         data_csv = pd.read_csv(csv_file, sep=',', names=['hunan', 'DATA_DATETIME', 'weather', 'tp_min', 'tp_max'])
         # hunan, DATA_DATETIME, weather, tp_min, tp_max
         data_label = pd.read_csv(label_file,sep=',')
