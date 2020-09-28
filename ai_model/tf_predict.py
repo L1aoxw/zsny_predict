@@ -146,6 +146,7 @@ class Predictor_fdl(object):
             self.model.X: x,
             self.model.keep_prob: keep_prob
         }
-        y_results = self.session.run(self.model.y_pre, feed_dict=feed)
+        y_results = self.session.run(self.model.y_pre, feed_dict=feed)  * 10000
         print(y_results)
         print('-----------------')
+        return y_results

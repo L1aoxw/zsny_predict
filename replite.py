@@ -237,7 +237,7 @@ class Merge_pred():
         train_data = pd.read_csv(train_data, sep=',')
         years = [2015, 2016, 2017, 2018, 2019, 2020]
         months = [1,2,3,4,5,6,7,8,9,10,11,12]
-        weath_all = []
+        weath_all = ['雷阵雨']
         for w in list(train_data[train_data.columns[2]]):
             weath_all = weath_all+re.split('[转~]',w.strip())
         weath_all = list(set(list(weath_all)))
@@ -284,6 +284,83 @@ class Merge_pred():
             i, j = data
             if float(i) > 10000: i = float(i) / 10
             return [float(i) / 1000, float(j) / 10000]
+
+        feature_result = []
+        for i in range(len(data_csv)):
+            line = list(data_csv.loc[i])
+            # date feature
+            # fy = f_label(line[-2:])
+
+            f0 = f_date(line[1])
+            # f1 = f_week(line[2])
+            f2 = f_weathe(line[2])
+            f3 = f_tp_max(line[4])
+            f4 = f_tp_min(line[3])
+
+            feature = f0 + f2 + f3 + f4
+            feature_result.append(np.array(feature))
+            # f2=f_other(line[2:])
+        feature_result = np.array(feature_result)
+        pass
+        return feature_result
+
+    def get_feature_lstm(self,csv_file='./天气预报15天_湖南省.csv',train_data = './train_data/train_data.csv'):
+        data_csv = pd.read_csv(csv_file, header=None, sep=',')
+        train_data = pd.read_csv(train_data, sep=',')
+
+        years = [2015, 2016, 2017, 2018, 2019, 2020]
+        months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        weath_all = []
+        for w in list(train_data[train_data.columns[2]]):
+            weath_all = weath_all + re.split('[转~]', w.strip())
+        weath_all = list(set(list(weath_all)))
+        weath_all = pinyin_sort(weath_all)
+        print(weath_all)
+
+        def cut_data(data_x, data_y):
+            pass
+            res_x = []
+            res_y = []
+            for i in range(len(data_x)):
+                if any(data_x[i][0][6:11]):
+                    res_x.append(data_x[i])
+                    res_y.append(data_y[i])
+            return np.array(res_x), np.array(res_y)
+
+        def f_date(date):
+            res = []
+            date = date.split('/')
+            m = [0 for i in months]
+            m[months.index(int(date[1]))] = 1
+            # 年份归一化
+            y = (int(date[0]) - years[0]) / (years[-1] - years[0])
+
+            res.append(y)
+            return res + m
+
+        def f_week(date):
+            if date in ['1', '2', '3', '4', '5']:
+                return [1, 0]
+            else:
+                return [0, 1]
+
+        def f_weathe(data):
+            # 天气编码
+            res = [0 for i in weath_all]
+            ws = re.split('[转~]', data.strip())
+            for w in list(ws):
+                res[weath_all.index(w)] = 1
+            return res
+
+        def f_tp_max(data):
+            tp_max = np.array(data_csv[data_csv.columns[4]])
+            res = [(float(data) - tp_max.min()) / (tp_max.max() - tp_max.min())]
+            return res
+
+        def f_tp_min(data):
+            tp_min = np.array(data_csv[data_csv.columns[3]])
+            res = [(float(data) - tp_min.min()) / (tp_min.max() - tp_min.min())]
+            return res
 
         feature_result = []
         for i in range(len(data_csv)):

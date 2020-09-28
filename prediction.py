@@ -159,7 +159,7 @@ class Prediction_xgb:
         predict_df = pd.DataFrame(predict_data)
         dpred = xgb.DMatrix(predict_df)
         bst = xgb.Booster(model_file=self.xgb_model_path)
-        preds = bst.predict(dpred)*1.05
+        preds = bst.predict(dpred)*1.01
         print('preds---', preds)
         print('---')
         return preds
