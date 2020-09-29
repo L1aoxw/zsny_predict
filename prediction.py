@@ -18,11 +18,12 @@ class Prediction_xgb:
         self.xgb_model_path = model_file
         self.param = {
             'learning_rate':0.1,
-            'max_depth': 10,
+            'max_depth': 5,
             'gamma': 0,
-            'subsample': 1,
-            'colsample': 0.75,
-            'colsample_bytree': 0.75,
+            'min_child_weight':3,
+            'subsample': 0.8,
+            # 'colsample': 0.75,
+            'colsample_bytree': 0.8,
             'scale_pos_weight': 1,
             'verbosity': 3,
             'objective': 'reg:squarederror',
@@ -33,16 +34,16 @@ class Prediction_xgb:
             learning_rate=0.1,
             n_estimators=96,  # 树的个数--1000棵树建立xgboost
             max_depth=5,  # 树的深度
-            min_child_weight=2,  # 叶子节点最小权重
+            min_child_weight=3,  # 叶子节点最小权重
             gamma=0.,  # 惩罚项中叶子结点个数前的参数
             subsample=0.8,  # 随机选择80%样本建立决策树
             # colsample = 0.75,  # 随机选择80%特征建立决策树
             colsample_bytree=0.6,
             verbosity=3,
             objective='reg:squarederror',  # 指定损失函数
-            eval_metric='mae',
-            scale_pos_weight=1,  # 解决样本个数不平衡的问题
-            random_state = 27,  # 随机数
+            # eval_metric='mae',
+            # scale_pos_weight=1,  # 解决样本个数不平衡的问题
+            # random_state = 27,  # 随机数
             )
 
     def cut_data(self,data_x,data_y):
@@ -147,7 +148,7 @@ class Prediction_xgb:
         print("\nModel Report")
         test_y = dtest.get_label()
         print('error---', np.mean(abs(dtrain_predictions - test_y) / test_y))
-        print("Accuracy : %.4g" % mean_absolute_error(test_y, dtrain_predictions))
+        # print("Accuracy : %.4g" % mean_absolute_error(test_y, dtrain_predictions))
         feat_imp = pd.Series(self.model.get_booster().get_fscore()).sort_values(ascending=False)
         feat_imp.plot(kind='bar', title='Feature Importances')
         plt.ylabel('Feature Importance Score')
@@ -159,7 +160,7 @@ class Prediction_xgb:
         predict_df = pd.DataFrame(predict_data)
         dpred = xgb.DMatrix(predict_df)
         bst = xgb.Booster(model_file=self.xgb_model_path)
-        preds = bst.predict(dpred)*1.01
+        preds = bst.predict(dpred)
         print('preds---', preds)
         print('---')
         return preds

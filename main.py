@@ -52,6 +52,9 @@ def insert_weather(db, city_temp, hunan_temp, value_idx='max'):
         words = line.strip().split(',')
         detester = words[1]
         data_datetime = datetime.datetime.strptime(detester,'%Y/%m/%d')
+        # 只入库当前日期之后的十五天预测数据
+        if data_datetime < datetime.datetime.now(): continue
+
         param_RD_ID2 = RD_ID[words[0]]
         if value_idx == 'max': param_value = words[-1]
         elif value_idx == 'min': param_value = words[-2]
@@ -75,9 +78,9 @@ def insert_weather(db, city_temp, hunan_temp, value_idx='max'):
             param_update = param_select
             param_update['param_value'] = param_value
             param_update['last_modified'] = date_now
-            param_update['TRANS_HNY_STATUS'] = '1'
-            param_update['TRANS_STATUS_NYJ'] = '1'
-            param_update['TRANS_STATUS_SELF'] = '1'
+            param_update['TRANS_HNY_STATUS'] = ''   #为空未迁移，1已迁移
+            param_update['TRANS_STATUS_NYJ'] = ''   #为空未迁移，1已迁移
+            param_update['TRANS_STATUS_SELF'] = ''  #为空未迁移，1已迁移
             updateParams.append(param_update)
         else:
             param_insert = param_select
@@ -102,6 +105,8 @@ def insert_preds(db,save_file:str,cate='最大负荷'):
 
         detester = words[1]
         data_datetime = datetime.datetime.strptime(detester,'%Y/%m/%d')
+        # 只入库当前日期之后的十五天预测数据
+        if data_datetime < datetime.datetime.now() : continue
         param_value = words[-1]
         if cate == '最大负荷':
             param_select = {
@@ -141,9 +146,9 @@ def insert_preds(db,save_file:str,cate='最大负荷'):
             param_update = param_select
             param_update['param_value'] = param_value
             param_update['last_modified'] = date_now
-            param_update['TRANS_HNY_STATUS'] = '1'
-            param_update['TRANS_STATUS_NYJ'] = '1'
-            param_update['TRANS_STATUS_SELF'] = '1'
+            param_update['TRANS_HNY_STATUS'] = ''   #为空未迁移，1已迁移
+            param_update['TRANS_STATUS_NYJ'] = ''   #为空未迁移，1已迁移
+            param_update['TRANS_STATUS_SELF'] = ''  #为空未迁移，1已迁移
             updateParams.append(param_update)
         else:
             param_insert = param_select
@@ -157,6 +162,29 @@ def insert_preds(db,save_file:str,cate='最大负荷'):
     db.insert_C_TR2P_VALUES(connection, insertParams)
     connection.close()
     pass
+
+def train_model(train_data_dir,model_file):
+    # replite = Replite()
+    # replite.get_lishi_addition(train_data_dir,years=[2020], months=[8])
+
+    merge_train = Merge_train(train_data_dir)
+    merge_pred = Merge_pred()
+    print('------模型重新训练------')
+    if not os.path.exists('./train_data/天气历史_湖南省.csv'):
+        merge_train.get_hunan_info()
+    predict_dir = './data'
+    # predict_file = predict_dir + '/天气预报15天_湖南省_%s.csv' % (timestr)
+    csv_flie = train_data_dir + '/天气历史_湖南省.csv'
+    label_file = train_data_dir +'/湖南省实际用电量.csv'
+    train_file = train_data_dir +'/train_data.csv'
+    trian_data, train_y = merge_train.get_feature(csv_flie,label_file,train_file)
+    # merge_pred.get_hunan_info()
+    prediction = Prediction_xgb(model_file)
+    prediction.train_xgboost(trian_data, train_y)
+    # predict_data = merge_pred.get_feature(predict_file,train_file)
+    # preds = prediction.pred_xgboost(predict_data)
+    # print(preds)
+    print('------训练完成------')
 
 def predict_weather():
     db = oracleOperation()
@@ -195,8 +223,6 @@ def predict_lstm_ydl():
     sess = tf.Session(config=config)
     sess_file =  model_path = os.path.join(PROJECT_DIR, "data.out.train/lstm_fdl/model.weights")
 
-    sys.stdout = Logger(sys.stdout)  # 将输出记录到log
-    sys.stderr = Logger(sys.stderr)  # 将错误信息记录到log
     print('---------------', time.strftime('%Y-%m-%d-%H:%M'), '---------------')
     db = oracleOperation()
 
@@ -231,24 +257,24 @@ def predict_lstm_ydl():
     insert_preds(db, save_file, cate='日用电量')
     print('----------------------------------------------------------------')
 
-def predict_xgb_fh():
+def predict_xgb_fh(is_train = False):
     result_dir = './result.fh/xgb'
     data_dir = './data'
     city_dir = './data_city'
     train_data_dir = './train_data'
     # model_file = './xgb_model/xgb_model_file'
-    model_file_ydl = './xgb_model/xgb_model_file'
+    model_file_fh = './xgb_model/xgb_model_file'
     timestr = datetime.datetime.now().strftime('%Y-%m-%d-%H')
     save_file = result_dir + '/result15天_湖南省_%s.csv' % (timestr)
     city_data = city_dir + '/天气预报15天_各市州_%s.csv' % (timestr)
     hunan_data = data_dir + '/天气预报15天_湖南省_%s.csv' % (timestr)
 
-    sys.stdout = Logger(sys.stdout)  # 将输出记录到log
-    sys.stderr = Logger(sys.stderr)  # 将错误信息记录到log
+    if is_train: train_model(train_data_dir, model_file_fh)
+
     print('---------------', time.strftime('%Y-%m-%d-%H:%M'), '---------------')
     db = oracleOperation()
 
-    prediction = Prediction_xgb(model_file_ydl)
+    prediction = Prediction_xgb(model_file_fh)
     if not os.path.exists(save_file):
         print(save_file, ' not exist')
         # save_file = './result15天_湖南省_%s.csv' % (timestr)
@@ -275,7 +301,55 @@ def predict_xgb_fh():
     insert_preds(db, save_file, cate='最大负荷')
     print('----------------------------------------------------------------')
 
+def predict_xgb_ydl(is_train = False):
+    result_dir = './result.ydl/xgb'
+    data_dir = './data'
+    city_dir = './data_city'
+    train_data_dir = './train_data'
+    # model_file = './xgb_model/xgb_model_file'
+    model_file_ydl = './xgb_model/xgb_model_ydl'
+    timestr = datetime.datetime.now().strftime('%Y-%m-%d-%H')
+    save_file = result_dir + '/result15天_湖南省_%s.csv' % (timestr)
+    city_data = city_dir + '/天气预报15天_各市州_%s.csv' % (timestr)
+    hunan_data = data_dir + '/天气预报15天_湖南省_%s.csv' % (timestr)
+
+    if is_train: train_model(train_data_dir , model_file_ydl)
+
+    print('---------------', time.strftime('%Y-%m-%d-%H:%M'), '---------------')
+    db = oracleOperation()
+    merge_train = Merge_train(train_data_dir)
+    prediction = Prediction_xgb(model_file_ydl)
+    if not os.path.exists(save_file):
+        print(save_file, ' not exist')
+        # save_file = './result15天_湖南省_%s.csv' % (timestr)
+        merge_pred = Merge_pred()
+        # replite.get_lishi()
+        if not os.path.exists(hunan_data):
+            print(hunan_data, 'not exist')
+            predict_file = merge_pred.get_hunan_info(hunan_data, timestr)
+        # trian_data, train_y = merge_train.get_feature()
+        # prediction.train_xgboost(trian_data, train_y)
+        predict_data = merge_pred.get_feature(hunan_data)
+
+        preds = prediction.pred_xgboost(predict_data)*1.05*10000
+        result_file = pd.read_csv(hunan_data, header=None, sep=',')
+        result_file.insert(len(result_file.columns), '', preds)
+        result_file.to_csv(save_file, index=False, header=False)
+
+    # print('插入天气预报最高气温入库：')
+    # insert_weather(db, city_data, hunan_data, 'max')
+    # print('插入天气预报最低气温入库：')
+    # insert_weather(db, city_data, hunan_data, 'min')
+    print('插入日用电量预测值入库：')
+    insert_preds(db, save_file, cate='日用电量')
+    print('----------------------------------------------------------------')
+
+
 if __name__ == '__main__':
+
+    sys.stdout = Logger(sys.stdout)  # 将输出记录到log
+    sys.stderr = Logger(sys.stderr)  # 将错误信息记录到log
     predict_weather()
-    # predict_xgb_fh()
+    predict_xgb_fh()
     # predict_lstm_ydl()
+    predict_xgb_ydl()

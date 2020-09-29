@@ -117,11 +117,12 @@ class Replite():
                 res_temp_max = res_temp_max.replace('℃', '').replace('/', '')
                 res_temp_mim = res_temp_mim.replace('℃', '').replace('/', '')
                 pass
-            res.append(','.join([city, res_date, res_week, res_weathe, res_temp_mim, res_temp_max]))
+            res.append(','.join([city, res_date, res_weathe, res_temp_mim, res_temp_max]))
         return '\n'.join(res)
 
 
-    def _get_lishi(self,city,year,month):
+    def _get_lishi(self,city:str,year:int,month:int):
+        if city == 'yiyang1': city = 'yiyang'
         url = 'http://www.tianqihoubao.com/lishi/%s/month/%d%02d.html' % (city,year,month)
 
         headers = {
@@ -162,8 +163,11 @@ class Replite():
         citys = ['changsha', 'zhuzhou', 'xiangtan', 'shaoyang', 'hengyang', 'yueyang', 'changde', 'zhangjiajie',
                  'yiyang1',
                  'chenzhou', 'yongzhou', 'huaihua', 'loudi', 'jishou']
+        year = int(datetime.datetime.now().strftime('%Y'))
+        month = int(datetime.datetime.now().strftime('%m'))
         res = []
         for city in citys:
+            res.append(self._get_lishi(city, year, month))
             res.append(self._get_yubao_2(city))
         open(city_dir+'/天气预报15天_各市州_%s.csv'%(timestr), 'w', encoding='utf-8').write('\n'.join(res))
 
@@ -217,18 +221,18 @@ class Merge_pred():
     def get_hunan_info(self,predict_file,timestr):
         pass
         citys_data = self.city_dir+'/天气预报15天_各市州_%s.csv'%(timestr)
+
         self.replite.get_yubao(self.city_dir,timestr)
         lines = pd.read_csv(citys_data,header=None,sep=',')
         res=[]
         for idx in range(len(lines)//14):
-            hunan_day = lines[idx::(self.pred_days-1)]
+            hunan_day = lines[idx::(len(lines)//14)]
             # header:[地区，日期，星期，天气，最低温，最高温]
             hunan_city = 'hunan'
             hunan_date = str(hunan_day.iat[0,1])
-            hunan_week = str(hunan_day.iat[0,2])
-            hunan_weathe = str(hunan_day[3].value_counts().index[0])
-            hunan_min = str(round(sum(hunan_day[4]._values * self.citys_w), 2))
-            hunan_max = str(round(sum(hunan_day[5]._values * self.citys_w), 2))
+            hunan_weathe = str(hunan_day[2].value_counts().index[0])
+            hunan_min = str(round(sum(hunan_day[3]._values * self.citys_w), 2))
+            hunan_max = str(round(sum(hunan_day[4]._values * self.citys_w), 2))
             res.append(','.join([hunan_city,hunan_date,hunan_weathe,hunan_min,hunan_max]))
         open(predict_file, 'w', encoding='utf-8').write('\n'.join(res))
         return predict_file
@@ -349,6 +353,7 @@ class Merge_pred():
             res = [0 for i in weath_all]
             ws = re.split('[转~]', data.strip())
             for w in list(ws):
+                if w == '雨': w = '小雨'
                 res[weath_all.index(w)] = 1
             return res
 
@@ -432,7 +437,7 @@ class Merge_train():
 
         years = [2015, 2016, 2017, 2018, 2019, 2020]
         months = [1,2,3,4,5,6,7,8,9,10,11,12]
-        weath_all = []
+        weath_all = ['雷阵雨']
         for w in list(data_[data_.columns[2]]):
             weath_all = weath_all+re.split('[转~]',w.strip())
         weath_all = list(set(list(weath_all)))
